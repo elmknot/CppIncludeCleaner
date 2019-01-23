@@ -1,0 +1,8 @@
+..\IF\Classes\scene\world\Combine_scene_world_generated.cpp
+..\IF\Classes\Net\push\Combine_push_generated.cpp
+..\IF\Classes\Net\command\Combine_command_generated.cpp
+..\IF\Classes\model\Combine_model_generated.cpp
+..\IF\Classes\Ext\GUI\Combine_extgui_generated.cpp
+..\IF\Classes\controller\Combine_controller_generated.cpp
+..\IF\Classes\view\popup\DragonBattle\Combine_pop_dragon_generated.cpp
+..\IF\Classes\view\popup\alliance\Combine_pop_alliance_generated.cpp
