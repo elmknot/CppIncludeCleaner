@@ -1,4 +1,4 @@
-#面临的问题
+# 面临的问题
 在头文件里改一行代码，点一下Build，切出去干点别的，喝口水，发会呆，切回来还没编译完……
 
 对于C++码农来说以上情景实在是太熟悉了，要是正在赶版本，简直是急死个人。即使用上IncrediBuild，也只能实现并行编译，链接依然漫长。
@@ -7,19 +7,19 @@ C++编译速度慢的罪魁祸首就在于编译时需要将所有#include的文
 
 ------------
 
-#一、主体思路
+# 一、主体思路
 从原理上来说，一个.cpp文件之所以需要#include其他文件是因为这个.cpp文件中的符号（类、函数、变量、宏定义等）在其他文件中定义。所以，基本的想法就是：
 1.找到.cpp文件中所有的符号分别在哪个文件中定义。
 2.把这些文件#include进来，其他的#include语句自然就是冗余的。
 
-###1.1 找到符号定义
+### 1.1 找到符号定义
 如何找到.cpp文件中所有的符号分别在哪个文件中定义呢？
 1.对源代码进行解析，生成一棵AST（抽象语法树）。
 2.根据AST中符号对象的信息找到这些符号的定义位置。
 
 那怎么生成AST呢？这显然就是标准的编译器前端的干活。C++编译器这么重的轮子显然不可能重新撸，所以我们将clang集成了进来做这件事。
 
-###1.2 把需要的文件#include进来
+### 1.2 把需要的文件#include进来
 现在我们已经找到了需要#include的文件，那怎么样把这些文件#include进来才最“好”呢？我觉得主要有三个标准：
 1.#include语句最少。看着就爽。
 2.递归#include进来的文件数量最少。毕竟我们清理的目的是缩短编译时间，而这个指标是和编译时间直接相关的。
@@ -49,8 +49,8 @@ C++编译速度慢的罪魁祸首就在于编译时需要将所有#include的文
 
 ------------
 
-#二、CppIncludeCleaner的用法
-###2.1 配置Config.txt
+# 二、CppIncludeCleaner的用法
+### 2.1 配置Config.txt
 clang的解析有非常多的参数，好在CppIncludeCleaner已经内置了默认配置并实现了.vcxproj工程文件的自动读取和解析，所以只需要在Config.txt中配置好.vcxproj工程文件路径就可以了：
 1.vcxproj_path和vcxproj_filename：vcxproj工程文件的所在目录和文件名。
 
@@ -61,15 +61,15 @@ clang的解析有非常多的参数，好在CppIncludeCleaner已经内置了默�
 5.enable_not_cl_compile、enable_auto_clean_not_cl_compile、enable_excluded_from_build、enable_auto_clean_excluded_from_build：
 一个.cpp文件需要在vcxproj文件中被ClCompile定义，且没有被ExcludedFromBuild定义才能正常参与编译，否则要么是实际不用的，要么是被其他.cpp文件#include的，默认不进行解析。如果需要也可以进行解析和清理，然后手动修复可能产生的问题。
 
-###2.2 配置IgnoreFile.txt（可选）
+### 2.2 配置IgnoreFile.txt（可选）
 如果有些文件人为地不希望被清理，可以将文件路径配在IgnoreFile.txt里，一行一个，如果是填相对路径的话以.vcxproj工程文件的位置为起点。
 
-###2.3 要清理的拖过去
+### 2.3 要清理的拖过去
 配置完成后，将需要清理的（一个或多个）文件（或文件夹）选中拖动到CppIncludeCleaner.bat上，CppIncludeCleaner就会自动筛选出其中的.cpp文件按照配置进行清理。
 
 ------------
 
-#三、运行结果输出
+# 三、运行结果输出
 CppIncludeCleaner运行完毕后会将汇总信息输出到statistics.html中并自动用浏览器打开（因为不太会html所以基本是硬写的，无论是代码还是显示效果都不甚理想……），类似下面这个样子：
 ![](./pics/statistics.png)
 
@@ -82,25 +82,25 @@ debug文件夹结构也和result相同，与diagnostics文件记录clang生成AS
 
 ------------
 
-#四、为什么要重新撸这个轮子
+# 四、为什么要重新撸这个轮子
 如前所述，清理.cpp文件中冗余的#include语句这个需求实在是古老而又普遍，因此很多前辈已经做过类似的工作，一个具有代表性的例子就是iwyu：https://github.com/include-what-you-use/include-what-you-use
 
 但是身处一个产品导向的团队，如果iwyu足够好用，能够满足项目需求的话也就不会有CppIncludeCleaner了。下面就解释一下iwyu存在的主要问题及CppIncludeCleaner针对这些问题所做的改进。
 
-###4.1.太重
+### 4.1.太重
 iwyu需要使用者自己下载安装clang，然后对iwyu进行cmake、编译，最后再使用命令行执行，使用步骤非常繁琐。
 
 这个问题在CppIncludeCleaner中得到了很好的解决，基本实现了即下即用。这主要归功于架构的不同。区别于iwyu的纯C++架构，CppIncludeCleaner使用了Python脚本+libclang（clang官方提供给Python绑定的dll）的组合，因此在使用的便捷性上有很大的优势。
 
-###4.2.处理结果不对
+### 4.2.处理结果不对
 如果说iwyu操作繁琐还只是体力活，那这个问题就比较致命了，主要有以下几个原因：
 
-####4.2.1 输入参数复杂
+#### 4.2.1 输入参数复杂
 要想让clang生成正确的AST，需要配置一连串的输入参数，对于不熟悉clang的人来说这个琢磨输入参数的过程非常痛苦。即使勉强琢磨出来了也很难保证与.vcxproj工程文件中的配置完全一致，生成出来的AST还是与Visual Studio生成的AST有很大差异。
 
 这个问题在CppIncludeCleaner中基本完全得到了解决。所有固定的clang输入参数都集成在了CppIncludeCleaner内部，而与项目配置有关的输入参数则通过读取.vcxproj工程文件进行自动解析生成，暴露给使用者必填的只有.vcxproj工程文件的路径一项，从而保证了与Visual Studio的同一性。
 
-####4.2.2 C++语言特性
+#### 4.2.2 C++语言特性
 C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确的解析并生成AST非常困难。关于这一点，iwyu自己给出了一个详细的解释：https://github.com/include-what-you-use/include-what-you-use/blob/master/docs/WhyIWYUIsDifficult.md
 
 这个问题在CppIncludeCleaner中并没有得到根本性的解决，但是被很好地绕过了。
@@ -109,7 +109,7 @@ C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确�
 
 ------------
 
-#五、实测结果
+# 五、实测结果
 上面“三、运行结果输出”中的示例图其实就是我目前的项目使用CppIncludeCleaner进行清理实际产生的输出。由于图片不太清楚，我把相关数据汇总在下面，并逐一进行解释。
 
 1.所有待处理的.cpp文件共有834个，其中没有在.vcxproj工程文件中设置为不编译的有652个，后者处理后发现有554个文件中包含冗余的#include语句，根据配置对这些文件进行了自动清理。
@@ -152,20 +152,20 @@ C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确�
 
 ------------
 
-#八、其他补充
-###8.1 前置声明
+# 八、其他补充
+### 8.1 前置声明
 从原理上说，一个.cpp文件中的符号在其他文件中定义并不一定要求我们将对应的文件#include进来，如果这个符号只是一个引用而不需要了解其内部信息，那么只需要做前置声明就可以了。
 
 用前置声明替代#include语句可以实现进一步缩短编译时间的效果，事实上iwyu就实现了将非必须的#include语句用前置声明替代的功能。
 
 那为什么CppIncludeCleaner没有实现这一功能呢？主要有以下两个原因：
 
-####8.1.1 有副作用
+#### 8.1.1 有副作用
 用前置声明替代#include语句并不是没有代价的。事实上，Google C++ Style Guide（我个人比较认同这一规范）就明确要求避免使用前置声明，而应该全部用#include语句替代。
 
 Google当然给出了这样做的理由，参见：https://google.github.io/styleguide/cppguide.html#Forward_Declarations
 
-####8.1.2 懒
+#### 8.1.2 懒
 好吧，虽然我是google粉，但是理论上说一个工具还是应该尽量提供更多的功能供用户自行取舍。
 
 用前置声明替代#include语句要求对符号进行更精细的解析，我在预研中发现很多所需的接口是libclang没有提供的，需要修改clang源码，囿于时间精力有限，暂时无力做这一部分功能，如果上述“七、未来改进计划”顺利完成的话可以考虑后续将这一功能集成进来。
