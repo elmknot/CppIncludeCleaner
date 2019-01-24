@@ -38,6 +38,7 @@ C++编译速度慢的罪魁祸首就在于编译时需要将所有#include的文
 ![](./pics/DAG4.png)
 
 **CppIncludeCleaner实际选择了最后一种做法。**
+
 上述清理步骤其实就是两步：
 1.冗余的#include语句直接删掉。
 2.剩下的#include语句按照上图所示替换为#include更下层的公共根节点。
