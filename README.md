@@ -59,7 +59,7 @@ clang的解析有非常多的参数，好在CppIncludeCleaner已经内置了默�
 3.macros_ignore：碰到哪些宏就不解析当前文件，用;隔开。这个主要是限制平台用的，如果一个.cpp文件中含有在其他平台运行的代码，则CppIncludeCleaner有可能会返回错误的结果。
 4.enable_auto_clean：是否开启自动清理。默认是开启的，如果关闭就需要根据CppIncludeCleaner的运行结果手动清理#include语句。
 5.enable_not_cl_compile、enable_auto_clean_not_cl_compile、enable_excluded_from_build、enable_auto_clean_excluded_from_build：
-对于在vcxproj文件中没有被ClCompile定义或是被ExcludedFromBuild定义的.cpp文件，要么是实际不用的，要么是被其他.cpp文件#include的，默认不进行解析。如果需要也可以进行解析和清理，然后手动修复可能产生的问题。
+一个.cpp文件需要在vcxproj文件中被ClCompile定义，且没有被ExcludedFromBuild定义才能正常参与编译，否则要么是实际不用的，要么是被其他.cpp文件#include的，默认不进行解析。如果需要也可以进行解析和清理，然后手动修复可能产生的问题。
 
 ###2.2 配置IgnoreFile.txt（可选）
 如果有些文件人为地不希望被清理，可以将文件路径配在IgnoreFile.txt里，一行一个，如果是填相对路径的话以.vcxproj工程文件的位置为起点。
@@ -90,7 +90,7 @@ debug文件夹结构也和result相同，与diagnostics文件记录clang生成AS
 ###4.1.太重
 iwyu需要使用者自己下载安装clang，然后对iwyu进行cmake、编译，最后再使用命令行执行，使用步骤非常繁琐。
 
-这个问题在CppIncludeCleaner中得到了很好的解决，基本实现了即下即用。这主要归功于架构的不同。区别于iwyu的纯C++架构，CppIncludeCleaner使用了Python脚本+libclang的组合（clang官方提供给Python绑定的dll），因此在使用的便捷性上有很大的优势。
+这个问题在CppIncludeCleaner中得到了很好的解决，基本实现了即下即用。这主要归功于架构的不同。区别于iwyu的纯C++架构，CppIncludeCleaner使用了Python脚本+libclang（clang官方提供给Python绑定的dll）的组合，因此在使用的便捷性上有很大的优势。
 
 ###4.2.处理结果不对
 如果说iwyu操作繁琐还只是体力活，那这个问题就比较致命了，主要有以下几个原因：
@@ -110,7 +110,7 @@ C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确�
 ------------
 
 #五、实测结果
-上面“三、运行结果输出”中的示例图其实就是我目前的项目使用CppIncludeCleaner进行清理实际产生的输出。由于KM的图片上传功能似乎有点问题，图片不太清楚，我把相关数据汇总在下面，并逐一进行解释。
+上面“三、运行结果输出”中的示例图其实就是我目前的项目使用CppIncludeCleaner进行清理实际产生的输出。由于图片不太清楚，我把相关数据汇总在下面，并逐一进行解释。
 
 1.所有待处理的.cpp文件共有834个，其中没有在.vcxproj工程文件中设置为不编译的有652个，后者处理后发现有554个文件中包含冗余的#include语句，根据配置对这些文件进行了自动清理。
 
@@ -125,7 +125,7 @@ C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确�
 关于编译时间，有两种测试方法：
 
 1.全量编译。
-这种测试方式最直接，但是并不能很好的反映清理效果。因为清理#include语句带来的编译时间的缩短很大程度上来源于修改某个.h文件后，需要重新编译的.cpp文件的数量变少，而在全量编译中，工程中的每个.cpp文件都是要被编译的。最终测试发现，清理后全量编译时间缩短了大约5%，这主要来自于.cpp文件编译时需要#include的文件数量变少了。
+这种测试方式最直接，但是并不能很好的反映清理效果。因为清理#include语句带来的编译时间的缩短很大程度上来源于修改某个.h文件后，需要重新编译的.cpp文件的数量变少，而在全量编译中，工程中每个有效的.cpp文件都是要被编译的。最终测试发现，清理后全量编译时间缩短了大约5%，这主要来自于.cpp文件编译时需要#include的文件数量变少了。
 
 2.修改.h文件然后进行增量编译。
 这是能够较好地反映清理效果的测试方式。我随机进行了20次测试，编译时间缩短了8%~22%不等，平均在13%左右。
@@ -161,7 +161,7 @@ C++有着复杂的语言特性，这使得要对所有.cpp文件都进行正确�
 那为什么CppIncludeCleaner没有实现这一功能呢？主要有以下两个原因：
 
 ####8.1.1 有副作用
-用前置声明替代#include语句并不是没有代价的。事实上，Google C++ Style Guide（我个人心目中的权威）就明确要求避免使用前置声明，而应该全部用#include语句替代。
+用前置声明替代#include语句并不是没有代价的。事实上，Google C++ Style Guide（我个人比较认同这一规范）就明确要求避免使用前置声明，而应该全部用#include语句替代。
 
 Google当然给出了这样做的理由，参见：https://google.github.io/styleguide/cppguide.html#Forward_Declarations
 
